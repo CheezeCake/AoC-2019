@@ -1,10 +1,9 @@
 use std::io;
-use std::io::BufRead;
-use std::io::BufReader;
+use std::io::prelude::*;
 
 fn main() {
-    let reader = BufReader::new(io::stdin());
-    let masses: Vec<i32> = reader
+    let masses: Vec<u32> = io::stdin()
+        .lock()
         .lines()
         .map(|line| line.unwrap().parse().unwrap())
         .collect();
