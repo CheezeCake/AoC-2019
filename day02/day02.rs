@@ -1,14 +1,14 @@
 use std::io;
 
-fn run(prog: &mut Vec<u32>) {
+fn run(prog: &mut Vec<usize>) {
     let mut pc = 0;
 
     loop {
         match prog[pc] {
             1 | 2 => {
-                let store = prog[pc + 3] as usize;
-                let op1 = prog[pc + 1] as usize;
-                let op2 = prog[pc + 2] as usize;
+                let store = prog[pc + 3];
+                let op1 = prog[pc + 1];
+                let op2 = prog[pc + 2];
                 prog[store] = if prog[pc] == 1 {
                     prog[op1] + prog[op2]
                 } else {
@@ -16,7 +16,7 @@ fn run(prog: &mut Vec<u32>) {
                 }
             }
             99 => break,
-            _ => panic!(format!("invalid opcode: {}", prog[pc])),
+            opcode => panic!(format!("invalid opcode: {}", opcode)),
         }
         pc += 4;
     }
@@ -25,7 +25,7 @@ fn run(prog: &mut Vec<u32>) {
 fn main() {
     let mut input = String::new();
     io::stdin().read_line(&mut input).unwrap();
-    let opcodes: Vec<u32> = input
+    let opcodes: Vec<usize> = input
         .trim()
         .split(',')
         .map(|opcode| opcode.parse().unwrap())
