@@ -31,7 +31,7 @@ fn walk_path(instructions: Vec<Instruction>) -> HashMap<(i32, i32), usize> {
                 'R' => x += 1,
                 'D' => y -= 1,
                 'L' => x -= 1,
-                _ => panic!(format!("invalid direction: {}", i.direction)),
+                _ => panic!("invalid direction: {}", i.direction),
             }
 
             steps += 1;
