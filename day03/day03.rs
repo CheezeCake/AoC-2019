@@ -57,8 +57,10 @@ fn read_wire() -> HashMap<(i32, i32), usize> {
 fn main() {
     let wire1 = read_wire();
     let wire2 = read_wire();
-    let intersections: HashMap<&(i32, i32), &usize> =
-        wire1.iter().filter(|k| wire2.contains_key(k.0)).collect();
+    let intersections: HashMap<(i32, i32), usize> = wire1
+        .iter()
+        .filter_map(|(p, steps)| Some((*p, wire2.get(p)? + steps)))
+        .collect();
 
     println!(
         "part 1: {}",
@@ -73,8 +75,8 @@ fn main() {
         "part 2: {}",
         intersections
             .iter()
-            .map(|(p, &steps)| return steps + wire2.get(p).unwrap_or(&(usize::max_value() - steps)))
-            .min()
+            .min_by_key(|(_, &steps)| steps)
             .unwrap()
+            .1
     );
 }
