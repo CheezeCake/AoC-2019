@@ -65,18 +65,11 @@ fn main() {
     println!(
         "part 1: {}",
         intersections
-            .iter()
-            .map(|(p, _)| p.0.abs() + p.1.abs())
+            .keys()
+            .map(|(x, y)| x.abs() + y.abs())
             .min()
             .unwrap()
     );
 
-    println!(
-        "part 2: {}",
-        intersections
-            .iter()
-            .min_by_key(|(_, &steps)| steps)
-            .unwrap()
-            .1
-    );
+    println!("part 2: {}", intersections.values().min().unwrap());
 }
