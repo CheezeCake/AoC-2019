@@ -1,21 +1,9 @@
 use std::collections::HashMap;
 use std::io;
-use std::num::ParseIntError;
-use std::str::FromStr;
 
 struct Instruction {
     direction: u8,
     length: usize,
-}
-
-impl FromStr for Instruction {
-    type Err = ParseIntError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let direction = s.as_bytes()[0];
-        let length: usize = s.get(1..).unwrap().parse()?;
-        Ok(Self { direction, length })
-    }
 }
 
 fn walk_path(instructions: Vec<Instruction>) -> HashMap<(i32, i32), usize> {
@@ -49,7 +37,10 @@ fn read_wire() -> HashMap<(i32, i32), usize> {
         input
             .trim()
             .split(',')
-            .map(|p| p.parse().unwrap())
+            .map(|s| Instruction {
+                direction: s.as_bytes()[0],
+                length: s.get(1..).unwrap().parse().unwrap(),
+            })
             .collect(),
     )
 }
