@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io;
 
 struct Instruction {
-    direction: u8,
+    direction: char,
     length: usize,
 }
 
@@ -14,7 +14,7 @@ fn walk_path(instructions: Vec<Instruction>) -> HashMap<(i32, i32), usize> {
 
     for i in instructions {
         for _ in 0..i.length {
-            match i.direction as char {
+            match i.direction {
                 'U' => y += 1,
                 'R' => x += 1,
                 'D' => y -= 1,
@@ -38,8 +38,8 @@ fn read_wire() -> HashMap<(i32, i32), usize> {
             .trim()
             .split(',')
             .map(|s| Instruction {
-                direction: s.as_bytes()[0],
-                length: s.get(1..).unwrap().parse().unwrap(),
+                direction: s.chars().next().unwrap(),
+                length: s[1..].parse().unwrap(),
             })
             .collect(),
     )
