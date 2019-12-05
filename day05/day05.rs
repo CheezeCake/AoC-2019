@@ -58,21 +58,13 @@ fn run(prog: &mut Vec<i32>, input: i32) -> i32 {
             7 => {
                 let store = prog[pc + 3] as usize;
                 prog[store] =
-                    if get(prog, prog[pc + 1], mode_op1) < get(prog, prog[pc + 2], mode_op2) {
-                        1
-                    } else {
-                        0
-                    };
+                    (get(prog, prog[pc + 1], mode_op1) < get(prog, prog[pc + 2], mode_op2)) as i32;
                 pc += 4
             }
             8 => {
                 let store = prog[pc + 3] as usize;
                 prog[store] =
-                    if get(prog, prog[pc + 1], mode_op1) == get(prog, prog[pc + 2], mode_op2) {
-                        1
-                    } else {
-                        0
-                    };
+                    (get(prog, prog[pc + 1], mode_op1) == get(prog, prog[pc + 2], mode_op2)) as i32;
                 pc += 4
             }
             99 => break,
