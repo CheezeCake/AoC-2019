@@ -4,20 +4,7 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
 
-#[derive(Debug, Clone)]
-struct OrbitInfo {
-    is_orbiting: usize,
-    objects_orbiting: Vec<String>,
-}
-
-impl OrbitInfo {
-    fn new() -> Self {
-        Self {
-            is_orbiting: 0,
-            objects_orbiting: vec![],
-        }
-    }
-}
+type OrbitInfo = HashMap<String, HashSet<String>>;
 
 #[derive(Debug, Clone)]
 struct OrbitCount {
@@ -34,105 +21,122 @@ impl OrbitCount {
     }
 }
 
+fn count_orbits(objects_orbiting: &OrbitInfo, in_orbit_around: &OrbitInfo) -> usize {
+    let mut in_orbit_around = in_orbit_around.clone();
+    let mut orbit_count = HashMap::new();
+    orbit_count.insert(String::from("COM"), OrbitCount::new());
+
+    while !in_orbit_around.is_empty() {
+        let not_orbiting_name = in_orbit_around
+            .iter()
+            .find(|(_, s)| s.is_empty())
+            .expect("dependency cycle detected")
+            .0
+            .clone();
+
+        let not_orbiting_count = orbit_count
+            .entry(not_orbiting_name.clone())
+            .or_insert(OrbitCount::new())
+            .clone();
+
+        for object_orbiting in objects_orbiting
+            .get(&not_orbiting_name)
+            .unwrap_or(&HashSet::new())
+        {
+            let entry = orbit_count
+                .entry(object_orbiting.to_string())
+                .or_insert(OrbitCount::new());
+            entry.direct += 1;
+            entry.indirect = not_orbiting_count.direct + not_orbiting_count.indirect;
+            in_orbit_around
+                .get_mut(object_orbiting)
+                .unwrap()
+                .remove(&not_orbiting_name);
+        }
+
+        in_orbit_around.remove(&not_orbiting_name);
+    }
+
+    orbit_count
+        .iter()
+        .map(|(_, cnt)| cnt.direct + cnt.indirect)
+        .sum()
+}
+
+fn shortest_path(
+    objects_orbiting: &OrbitInfo,
+    in_orbit_around: &OrbitInfo,
+    start: &String,
+    target: &String,
+) -> Option<usize> {
+    let mut visited = HashSet::new();
+    let mut q = VecDeque::new();
+    q.push_back((start, 0));
+    visited.insert(start);
+
+    let empty = HashSet::new();
+    while !q.is_empty() {
+        let (obj, n) = q.pop_front().unwrap();
+        if in_orbit_around
+            .get(target)
+            .unwrap_or(&HashSet::new())
+            .contains(obj)
+        {
+            return Some(n - 1);
+        }
+
+        for o in objects_orbiting.get(obj).unwrap_or(&empty) {
+            if !visited.contains(o) {
+                q.push_back((o, n + 1));
+                visited.insert(o);
+            }
+        }
+        for o in in_orbit_around.get(obj).unwrap_or(&empty) {
+            if !visited.contains(o) {
+                q.push_back((o, n + 1));
+                visited.insert(o);
+            }
+        }
+    }
+
+    None
+}
+
 fn main() {
-    let mut omap: HashMap<String, Vec<String>> = HashMap::new();
+    let mut objects_orbiting: OrbitInfo = OrbitInfo::new();
+    let mut in_orbit_around: OrbitInfo = OrbitInfo::new();
 
-    let mut orbits: HashMap<String, OrbitInfo> = HashMap::new();
-    let mut orbiting_count: HashMap<String, usize> = HashMap::new();
-
-    orbiting_count.insert(String::from("COM"), 0);
+    in_orbit_around.insert(String::from("COM"), HashSet::new());
 
     for line in io::stdin().lock().lines() {
         let line = line.unwrap();
         let parts: Vec<&str> = line.split(')').collect();
         assert_eq!(parts.len(), 2);
-        orbits
-            .entry(parts[0].to_string())
-            .or_insert(OrbitInfo::new())
-            .objects_orbiting
-            .push(parts[1].to_string());
-        orbits
-            .entry(parts[1].to_string())
-            .or_insert(OrbitInfo::new())
-            .is_orbiting += 1;
-        *orbiting_count.entry(parts[1].to_string()).or_insert(0) += 1;
 
-        omap.entry(parts[0].to_string())
-            .or_insert(vec![])
-            .push(parts[1].to_string());
-        omap.entry(parts[1].to_string())
-            .or_insert(vec![])
-            .push(parts[0].to_string());
-    }
-
-    let mut orbit_count = HashMap::new();
-
-    while orbiting_count.len() > 0 {
-        let no_orbiting = orbiting_count
-            .iter()
-            .find(|(_, &n)| n == 0)
-            .expect("cycle")
-            .0
-            .clone();
-        let no_orbiting_info = orbits
-            .get(&no_orbiting)
-            .unwrap_or(&OrbitInfo::new())
-            .clone();
-
-        let no_orbiting_count = orbit_count
-            .get(&no_orbiting)
-            .unwrap_or(&OrbitCount::new())
-            .clone();
-
-        for object_orbiting in no_orbiting_info.objects_orbiting {
-            let entry = orbit_count
-                .entry(object_orbiting.clone())
-                .or_insert(OrbitCount::new());
-            entry.direct += 1;
-            entry.indirect = no_orbiting_count.direct + no_orbiting_count.indirect;
-
-            let cnt = orbiting_count.get_mut(&object_orbiting).unwrap();
-            *cnt -= 1;
-        }
-
-        orbiting_count.remove(&no_orbiting);
+        let (obj1, obj2) = (parts[0].to_string(), parts[1].to_string());
+        objects_orbiting
+            .entry(obj1.clone())
+            .or_insert(HashSet::new())
+            .insert(obj2.clone());
+        in_orbit_around
+            .entry(obj2.clone())
+            .or_insert(HashSet::new())
+            .insert(obj1.clone());
     }
 
     println!(
         "part 1: {}",
-        orbit_count
-            .iter()
-            .map(|(_, cnt)| cnt.direct + cnt.indirect)
-            .sum::<usize>()
+        count_orbits(&objects_orbiting, &in_orbit_around)
     );
 
-    //////////////////////////////////////////////////////////:
-
-    let mut visited = HashSet::new();
-    let mut q = VecDeque::new();
-    q.push_back((String::from("YOU"), 0));
-    visited.insert(String::from("YOU"));
-
-    while !q.is_empty() {
-        let (obj, n) = q.pop_front().unwrap();
-        if orbits
-            .get(&obj)
-            .unwrap_or(&OrbitInfo::new())
-            .objects_orbiting
-            .iter()
-            .any(|s| *s == String::from("SAN"))
-        {
-            println!("part 2: {}", n - 1);
-            return;
-        }
-
-        for o in omap.get(&obj).unwrap_or(&vec![]) {
-            if !visited.contains(o) {
-                q.push_back((o.to_string(), n + 1));
-                visited.insert(o.to_string());
-            }
-        }
-    }
-
-    unreachable!("aya");
+    println!(
+        "part 2: {}",
+        shortest_path(
+            &objects_orbiting,
+            &in_orbit_around,
+            &String::from("YOU"),
+            &String::from("SAN")
+        )
+        .expect("no path found")
+    );
 }
