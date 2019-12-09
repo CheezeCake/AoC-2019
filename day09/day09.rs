@@ -72,10 +72,11 @@ impl CPU {
         let mut output = 0;
 
         loop {
-            let opcode = self.mem[self.pc] % 100;
-            let mode_op1 = (self.mem[self.pc] / 100) % 10;
-            let mode_op2 = (self.mem[self.pc] / 1000) % 10;
-            let mode_op3 = self.mem[self.pc] / 10000;
+            let instr = self.mem[self.pc];
+            let opcode = instr % 100;
+            let mode_op1 = (instr / 100) % 10;
+            let mode_op2 = (instr / 1000) % 10;
+            let mode_op3 = instr / 10000;
 
             match opcode {
                 1 | 2 => {
