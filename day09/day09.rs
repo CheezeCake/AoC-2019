@@ -60,7 +60,7 @@ impl CPU {
     fn store(&mut self, op: i64, mode: i64, value: i64) {
         let store = match mode {
             0 => op,
-            1 => panic!("store instruction with immidiate mode"),
+            1 => panic!("store instruction with immediate mode"),
             2 => self.relative_offset + op,
             _ => panic!("invalid mode: {}", mode),
         } as usize;
