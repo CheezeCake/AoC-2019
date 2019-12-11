@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io;
 use std::ops::Index;
 use std::ops::IndexMut;
+use std::ops::RangeInclusive;
 
 struct Memory {
     mem: HashMap<usize, i64>,
@@ -186,7 +187,7 @@ fn paint(program: &Vec<i64>, starting_color: i64) -> HashMap<(i32, i32), i64> {
     panels
 }
 
-fn coord_range<F>(panels: &HashMap<(i32, i32), i64>, coord: F) -> std::ops::RangeInclusive<i32>
+fn coord_range<F>(panels: &HashMap<(i32, i32), i64>, coord: F) -> RangeInclusive<i32>
 where
     F: Fn(&(i32, i32)) -> i32,
 {
