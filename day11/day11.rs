@@ -167,14 +167,14 @@ fn paint(program: &Vec<i64>, starting_color: i64) -> HashMap<(i32, i32), i64> {
         if let Some(d) = cpu.run(0) {
             if d == 0 {
                 if direction == 0 {
-                    direction = 3;
+                    direction = directions.len() - 1;
                 } else {
                     direction -= 1;
                 }
             } else {
                 direction += 1;
             }
-            direction %= 4;
+            direction %= directions.len();
 
             x += directions[direction].0;
             y += directions[direction].1;
@@ -184,6 +184,15 @@ fn paint(program: &Vec<i64>, starting_color: i64) -> HashMap<(i32, i32), i64> {
     }
 
     panels
+}
+
+fn coord_range<F>(panels: &HashMap<(i32, i32), i64>, coord: F) -> std::ops::RangeInclusive<i32>
+where
+    F: Fn(&(i32, i32)) -> i32,
+{
+    let min = panels.keys().map(&coord).min().unwrap();
+    let max = panels.keys().map(&coord).max().unwrap();
+    min..=max
 }
 
 fn main() {
@@ -198,14 +207,10 @@ fn main() {
     println!("part 1: {}", paint(&program, 0).len());
 
     let panels = paint(&program, 1);
-    let min_x = panels.keys().min_by_key(|(x, _)| x).unwrap().0;
-    let min_y = panels.keys().min_by_key(|(_, y)| y).unwrap().1;
-    let max_x = panels.keys().max_by_key(|(x, _)| x).unwrap().0;
-    let max_y = panels.keys().max_by_key(|(_, y)| y).unwrap().1;
 
     println!("part 2:");
-    for y in min_y..=max_y {
-        for x in min_x..=max_x {
+    for y in coord_range(&panels, |&(_, y)| y) {
+        for x in coord_range(&panels, |&(x, _)| x) {
             print!(
                 "{}",
                 match panels.get(&(x, y)) {
