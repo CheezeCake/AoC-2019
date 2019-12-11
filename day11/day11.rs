@@ -156,7 +156,7 @@ fn paint(program: &Vec<i64>, starting_color: i64) -> HashMap<(i32, i32), i64> {
     let mut direction = 0;
     let mut cpu = CPU::new(&program);
 
-    let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+    let directions = [(0, -1), (1, 0), (0, 1), (-1, 0)];
 
     *panels.entry((x, y)).or_insert(0) = starting_color;
 
