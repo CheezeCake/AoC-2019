@@ -7,7 +7,7 @@ use std::ops::Add;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
 struct Vec3 {
     x: i32,
     y: i32,
@@ -89,7 +89,7 @@ fn gravitational_pull(a: &Vec3, b: &Vec3) -> Vec3 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 struct Moon {
     pos: Vec3,
     velocity: Vec3,
