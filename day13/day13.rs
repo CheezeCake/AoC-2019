@@ -233,15 +233,20 @@ impl Arcade {
             let (pad_x, pad_y) = find_tile_position(PADDLE, &self.screen).expect("no paddle");
 
             let mut copy = self.clone();
-            loop {
+            for i in 0.. {
                 let (ball_dst_x, ball_dst_y) =
                     find_tile_position(BALL, &copy.screen).expect("no ball");
                 if ball_dst_y == pad_y - 1 {
-                    input = match pad_x.cmp(&ball_dst_x) {
-                        Ordering::Less => 1,
-                        Ordering::Equal => 0,
-                        Ordering::Greater => -1,
-                    };
+                    let mut pad_x = pad_x;
+                    for _ in 0..i {
+                        input = match pad_x.cmp(&ball_dst_x) {
+                            Ordering::Less => 1,
+                            Ordering::Equal => 0,
+                            Ordering::Greater => -1,
+                        };
+                        pad_x += input;
+                        self.run(Some(input));
+                    }
                     break;
                 }
                 if let IntOuput::Exit = copy.run(Some(0)) {
