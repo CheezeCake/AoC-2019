@@ -174,6 +174,7 @@ impl CPU {
     }
 }
 
+const BLOCK: i64 = 2;
 const PADDLE: i64 = 3;
 const BALL: i64 = 4;
 
@@ -275,7 +276,11 @@ fn main() {
     arcade.run_until_exit();
     println!(
         "part 1: {}",
-        arcade.screen.iter().filter(|(_, &tile)| tile == 2).count()
+        arcade
+            .screen
+            .iter()
+            .filter(|(_, &tile)| tile == BLOCK)
+            .count()
     );
 
     arcade = Arcade::new(&program);
