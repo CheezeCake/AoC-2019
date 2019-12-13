@@ -4,7 +4,6 @@ use std::io;
 use std::ops::Index;
 use std::ops::IndexMut;
 
-#[derive(Clone)]
 struct Memory {
     mem: HashMap<usize, i64>,
 }
@@ -31,7 +30,6 @@ impl IndexMut<usize> for Memory {
     }
 }
 
-#[derive(Clone)]
 struct CPU {
     pc: usize,
     relative_offset: i64,
@@ -178,7 +176,6 @@ const BLOCK: i64 = 2;
 const PADDLE: i64 = 3;
 const BALL: i64 = 4;
 
-#[derive(Clone)]
 struct Arcade {
     cpu: CPU,
     score: i64,
@@ -231,30 +228,13 @@ impl Arcade {
                 return self.score;
             }
 
-            let (pad_x, pad_y) = find_tile_position(PADDLE, &self.screen).expect("no paddle");
-
-            let mut copy = self.clone();
-            for i in 0.. {
-                let (ball_dst_x, ball_dst_y) =
-                    find_tile_position(BALL, &copy.screen).expect("no ball");
-                if ball_dst_y == pad_y - 1 {
-                    let mut pad_x = pad_x;
-                    for _ in 0..i {
-                        input = match pad_x.cmp(&ball_dst_x) {
-                            Ordering::Less => 1,
-                            Ordering::Equal => 0,
-                            Ordering::Greater => -1,
-                        };
-                        pad_x += input;
-                        self.run(Some(input));
-                    }
-                    break;
-                }
-                if let IntOuput::Exit = copy.run(Some(0)) {
-                    input = 0;
-                    break;
-                }
-            }
+            let (pad_x, _) = find_tile_position(PADDLE, &self.screen).expect("no paddle");
+            let (ball_dst_x, _) = find_tile_position(BALL, &self.screen).expect("no ball");
+            input = match pad_x.cmp(&ball_dst_x) {
+                Ordering::Less => 1,
+                Ordering::Equal => 0,
+                Ordering::Greater => -1,
+            };
         }
     }
 }
