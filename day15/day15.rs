@@ -1,4 +1,3 @@
-use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
@@ -156,79 +155,89 @@ impl CPU {
     }
 }
 
-fn get_area_map(program: &Vec<i64>) -> HashMap<(i32, i32), (i64, usize)> {
+enum PositionType {
+    Wall,
+    Empty,
+    OxygenSystem,
+}
+
+type Position = (i32, i32);
+
+fn adjacent_positions(p: Position) -> impl Iterator<Item = (Position, usize)> {
+    [(0, 1), (0, -1), (-1, 0), (1, 0)]
+        .iter()
+        .enumerate()
+        .map(move |(i, d)| ((p.0 + d.0, p.1 + d.1), i + 1))
+}
+
+fn get_area_map(program: &Vec<i64>) -> HashMap<Position, PositionType> {
     let mut area_map = HashMap::new();
 
     let mut q = VecDeque::new();
-    let mut visited = HashSet::new();
-    let directions = [(0, 0), (0, 1), (0, -1), (-1, 0), (1, 0)];
+    let mut discovered = HashSet::new();
 
-    q.push_back((CPU::new(&program), (0, 0), 0));
-    visited.insert((0, 0));
+    q.push_back((CPU::new(&program), (0, 0)));
+    discovered.insert((0, 0));
 
     while !q.is_empty() {
-        let (cpu, (x, y), n) = q.pop_front().unwrap();
-
-        for direction in 1..=4 {
-            let new_pos = (
-                x + directions[direction as usize].0,
-                y + directions[direction as usize].1,
-            );
-            if visited.contains(&new_pos) {
+        let (cpu, pos) = q.pop_front().unwrap();
+        for (new_pos, direction) in adjacent_positions(pos) {
+            if discovered.contains(&new_pos) {
                 continue;
             }
-            visited.insert(new_pos);
+            discovered.insert(new_pos);
 
             let mut new_cpu = cpu.clone();
-            let spot = new_cpu.run(direction);
-            area_map.insert(new_pos, (spot, n + 1));
-
-            if spot == 1 {
-                q.push_back((new_cpu, new_pos, n + 1));
-            }
+            let pt = new_cpu.run(direction as i64);
+            area_map.insert(
+                new_pos,
+                match pt {
+                    0 => PositionType::Wall,
+                    1 => {
+                        q.push_back((new_cpu, new_pos));
+                        PositionType::Empty
+                    }
+                    2 => PositionType::OxygenSystem,
+                    _ => panic!("invalid position type: {}", pt),
+                },
+            );
         }
     }
 
     area_map
 }
 
-fn oxygen_filling(area_map: &HashMap<(i32, i32), (i64, usize)>) -> usize {
-    let oxygen_pos = area_map
-        .iter()
-        .find(|(_, (loc, _))| *loc == 2)
-        .expect("oxygen system not found")
-        .0;
+fn distance_map(
+    from: &Position,
+    map: &HashMap<Position, PositionType>,
+) -> HashMap<Position, usize> {
+    let mut dist_map = HashMap::new();
 
     let mut q = VecDeque::new();
-    let mut visited = HashSet::new();
-    let directions = [(0, 0), (0, 1), (0, -1), (-1, 0), (1, 0)];
+    let mut discovered = HashSet::new();
 
-    q.push_back((*oxygen_pos, 0));
-    visited.insert(*oxygen_pos);
-
-    let mut max = 0;
+    q.push_back((*from, 0));
+    discovered.insert(*from);
 
     while !q.is_empty() {
-        let ((x, y), n) = q.pop_front().unwrap();
+        let (pos, dist) = q.pop_front().unwrap();
+        dist_map.insert(pos, dist);
 
-        max = cmp::max(max, n);
-
-        for direction in 1..=4 {
-            let new_pos = (
-                x + directions[direction as usize].0,
-                y + directions[direction as usize].1,
-            );
-            if visited.contains(&new_pos) {
+        for (new_pos, _) in adjacent_positions(pos) {
+            if discovered.contains(&new_pos) {
                 continue;
             }
-            if area_map.get(&new_pos).unwrap_or(&(0, 0)).0 == 1 {
-                visited.insert(new_pos);
-                q.push_back((new_pos, n + 1));
+            discovered.insert(new_pos.clone());
+
+            if let PositionType::Empty | PositionType::OxygenSystem =
+                map.get(&new_pos).unwrap_or(&PositionType::Wall)
+            {
+                q.push_back((new_pos, dist + 1));
             }
         }
     }
 
-    max
+    dist_map
 }
 
 fn main() {
@@ -240,16 +249,29 @@ fn main() {
         .map(|opcode| opcode.parse().unwrap())
         .collect();
 
-    let area_map = get_area_map(&program);
+    let map = get_area_map(&program);
+    let oxygen_system_position = map
+        .iter()
+        .find(|(_, pt)| match pt {
+            PositionType::OxygenSystem => true,
+            _ => false,
+        })
+        .expect("no oxygen")
+        .0;
+
     println!(
         "part 1: {}",
-        (area_map
-            .iter()
-            .find(|(_, (loc, _))| *loc == 2)
-            .expect("oxygen system not found")
-            .1)
-            .1
+        distance_map(&(0, 0), &map)
+            .get(oxygen_system_position)
+            .unwrap()
     );
 
-    println!("part 2: {}", oxygen_filling(&area_map));
+    println!(
+        "part 2: {}",
+        distance_map(oxygen_system_position, &map)
+            .iter()
+            .map(|(_, dist)| dist)
+            .max()
+            .unwrap()
+    );
 }
