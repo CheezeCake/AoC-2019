@@ -2,10 +2,8 @@ use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
-use std::hash::{Hash, Hasher};
 use std::io;
 use std::io::prelude::*;
-use std::iter::FromIterator;
 
 fn find(map: &Vec<Vec<char>>, target: char) -> Option<(usize, usize)> {
     for y in 0..map.len() {
@@ -21,7 +19,7 @@ fn find(map: &Vec<Vec<char>>, target: char) -> Option<(usize, usize)> {
 fn accessible_keys(
     start: (usize, usize),
     map: &Vec<Vec<char>>,
-    keys_found: &HashSet<char>,
+    keys_found: u32,
 ) -> Vec<((usize, usize), usize)> {
     let mut accessible = Vec::new();
 
@@ -33,7 +31,7 @@ fn accessible_keys(
 
     while let Some(((x, y), distance)) = q.pop_front() {
         let c = map[y][x];
-        if c.is_lowercase() && !keys_found.contains(&c) {
+        if c.is_lowercase() && (keys_found & (1 << (c as u8 - 'a' as u8))) == 0 {
             accessible.push(((x, y), distance));
             continue;
         }
@@ -54,7 +52,8 @@ fn accessible_keys(
             if c == '.'
                 || c == '@'
                 || c.is_lowercase()
-                || (c.is_uppercase() && keys_found.contains(&c.to_ascii_lowercase()))
+                || (c.is_uppercase()
+                    && (keys_found & (1 << (c.to_ascii_lowercase() as u8 - 'a' as u8))) != 0)
             {
                 discovered.insert(pos);
                 q.push_back((pos, distance + 1));
@@ -65,9 +64,9 @@ fn accessible_keys(
     accessible
 }
 
-#[derive(Clone, Debug)]
+#[derive(Hash, Eq, PartialEq, Clone, Debug)]
 struct VaultState {
-    keys_found: Vec<char>,
+    keys_found: u32,
     robots: Vec<(usize, usize)>,
 }
 
@@ -76,34 +75,11 @@ impl VaultState {
         let mut robots = Vec::new();
         robots.resize(n, (0, 0));
         Self {
-            keys_found: Vec::new(),
+            keys_found: 0,
             robots,
         }
     }
 }
-
-impl Hash for VaultState {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let mut sorted = self.keys_found.clone();
-        sorted.sort();
-        for c in sorted {
-            c.hash(state);
-        }
-        for p in &self.robots {
-            p.hash(state);
-        }
-    }
-}
-
-impl PartialEq for VaultState {
-    fn eq(&self, other: &Self) -> bool {
-        let s: HashSet<char> = HashSet::from_iter(self.keys_found.clone());
-        let o: HashSet<char> = HashSet::from_iter(other.keys_found.clone());
-        s == o && self.robots == other.robots
-    }
-}
-
-impl Eq for VaultState {}
 
 fn solve(
     state: &mut VaultState,
@@ -111,7 +87,7 @@ fn solve(
     key_count: usize,
     cache: &mut HashMap<VaultState, usize>,
 ) -> usize {
-    if state.keys_found.len() == key_count {
+    if state.keys_found == (1 << key_count) - 1 {
         return 0;
     }
 
@@ -119,11 +95,10 @@ fn solve(
 
     for i in 0..state.robots.len() {
         let pos = state.robots[i];
-        let kf_set: HashSet<char> = HashSet::from_iter(state.keys_found.clone());
-        let accessible = accessible_keys(pos, map, &kf_set);
+        let accessible = accessible_keys(pos, map, state.keys_found);
 
         for (key_pos, distance) in accessible {
-            state.keys_found.push(map[key_pos.1][key_pos.0]);
+            state.keys_found |= 1 << (map[key_pos.1][key_pos.0] as u8 - 'a' as u8);
             state.robots[i] = key_pos;
 
             let length = match cache.get(state) {
@@ -132,7 +107,7 @@ fn solve(
             };
             min = cmp::min(min, length.checked_add(distance).unwrap_or(std::usize::MAX));
 
-            state.keys_found.pop();
+            state.keys_found &= !(1 << (map[key_pos.1][key_pos.0] as u8 - 'a' as u8));
             state.robots[i] = pos;
         }
 
@@ -151,6 +126,7 @@ fn main() {
 
     let entrance = find(&map, '@').expect("entrance not found");
     let key_count = map.iter().flatten().filter(|c| c.is_lowercase()).count();
+    assert!(key_count <= 32);
 
     let mut state = VaultState::new(1);
     state.robots[0] = entrance;
