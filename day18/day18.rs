@@ -38,8 +38,8 @@ fn accessible_keys(
             continue;
         }
 
-        for dir in &[(0, -1), (1, 0), (0, 1), (-1, 0)] {
-            let (nx, ny) = (x as i32 + dir.0, y as i32 + dir.1);
+        for (dx, dy) in &[(0, -1), (1, 0), (0, 1), (-1, 0)] {
+            let (nx, ny) = (x as i32 + dx, y as i32 + dy);
             if ny < 0 || ny as usize >= map.len() || nx < 0 || nx as usize >= map[ny as usize].len()
             {
                 continue;
@@ -64,41 +64,6 @@ fn accessible_keys(
 
     accessible
 }
-
-// fn shortest(
-//     pos: (usize, usize),
-//     length: usize,
-//     map: &Vec<Vec<char>>,
-//     keys_found: &mut HashSet<char>,
-//     key_count: usize,
-//     shortest_len: &mut usize,
-// ) {
-//     if length > *shortest_len {
-//         return;
-//     }
-//     if keys_found.len() == key_count {
-//         *shortest_len = cmp::min(*shortest_len, length);
-//         println!("{}", shortest_len);
-//         return;
-//     }
-
-//     let accessible = accessible_keys(pos, map, keys_found);
-
-//     for (key_pos, distance) in accessible {
-//         keys_found.insert(map[key_pos.1][key_pos.0]);
-
-//         shortest(
-//             key_pos,
-//             length + distance,
-//             map,
-//             keys_found,
-//             key_count,
-//             shortest_len,
-//         );
-
-//         keys_found.remove(&map[key_pos.1][key_pos.0]);
-//     }
-// }
 
 #[derive(Clone, Debug)]
 struct VaultState {
