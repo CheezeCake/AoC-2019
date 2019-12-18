@@ -101,74 +101,85 @@ fn accessible_keys(
 // }
 
 #[derive(Clone, Debug)]
-struct KeySet {
-    keys: Vec<char>,
+struct VaultState {
+    keys_found: Vec<char>,
+    robots: Vec<(usize, usize)>,
 }
 
-impl KeySet {
-    fn new() -> Self {
-        Self { keys: Vec::new() }
+impl VaultState {
+    fn new(n: usize) -> Self {
+        let mut robots = Vec::new();
+        robots.resize(n, (0, 0));
+        Self {
+            keys_found: Vec::new(),
+            robots,
+        }
     }
 }
 
-impl Hash for KeySet {
+impl Hash for VaultState {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let mut sorted = self.keys.clone();
+        let mut sorted = self.keys_found.clone();
         sorted.sort();
         for c in sorted {
             c.hash(state);
         }
-        if let Some(last) = self.keys.last() {
-            last.hash(state);
+        for p in &self.robots {
+            p.hash(state);
         }
     }
 }
 
-impl PartialEq for KeySet {
+impl PartialEq for VaultState {
     fn eq(&self, other: &Self) -> bool {
-        let s: HashSet<char> = HashSet::from_iter(self.keys.clone());
-        let o: HashSet<char> = HashSet::from_iter(other.keys.clone());
-        s == o && self.keys.last() == other.keys.last()
+        let s: HashSet<char> = HashSet::from_iter(self.keys_found.clone());
+        let o: HashSet<char> = HashSet::from_iter(other.keys_found.clone());
+        s == o && self.robots == other.robots
     }
 }
 
-impl Eq for KeySet {}
+impl Eq for VaultState {}
 
 fn solve(
-    pos: (usize, usize),
+    state: &mut VaultState,
     map: &Vec<Vec<char>>,
-    keys_found: &mut KeySet,
     key_count: usize,
-    cache: &mut HashMap<KeySet, usize>,
+    cache: &mut HashMap<VaultState, usize>,
 ) -> usize {
-    if keys_found.keys.len() == key_count {
+    if state.keys_found.len() == key_count {
         return 0;
     }
 
-    let kf_set: HashSet<char> = HashSet::from_iter(keys_found.keys.clone());
-    let accessible = accessible_keys(pos, map, &kf_set);
     let mut min = std::usize::MAX;
 
-    for (key_pos, distance) in accessible {
-        keys_found.keys.push(map[key_pos.1][key_pos.0]);
+    for i in 0..state.robots.len() {
+        let pos = state.robots[i];
+        let kf_set: HashSet<char> = HashSet::from_iter(state.keys_found.clone());
+        let accessible = accessible_keys(pos, map, &kf_set);
 
-        if let Some(length) = cache.get(keys_found) {
-            min = cmp::min(min, length + distance);
-        } else {
-            let length = solve(key_pos, map, keys_found, key_count, cache);
-            min = cmp::min(min, length + distance);
+        for (key_pos, distance) in accessible {
+            state.keys_found.push(map[key_pos.1][key_pos.0]);
+            state.robots[i] = key_pos;
+
+            if let Some(length) = cache.get(state) {
+                min = cmp::min(min, length.checked_add(distance).unwrap_or(std::usize::MAX));
+            } else {
+                let length = solve(state, map, key_count, cache);
+                min = cmp::min(min, length.checked_add(distance).unwrap_or(std::usize::MAX));
+            }
+
+            state.keys_found.pop();
+            state.robots[i] = pos;
         }
 
-        keys_found.keys.pop();
+        cache.insert(state.clone(), min);
     }
-
-    cache.insert(keys_found.clone(), min);
 
     min
 }
 
 fn main() {
-    let map: Vec<Vec<char>> = io::stdin()
+    let mut map: Vec<Vec<char>> = io::stdin()
         .lock()
         .lines()
         .map(|line| line.unwrap().chars().collect())
@@ -177,9 +188,22 @@ fn main() {
     let entrance = find(&map, '@').expect("entrance not found");
     let key_count = map.iter().flatten().filter(|c| c.is_lowercase()).count();
 
-    let mut keys_found = KeySet::new();
+    let mut state = VaultState::new(1);
+    state.robots[0] = entrance;
     let mut cache = HashMap::new();
-    let len = solve(entrance, &map, &mut keys_found, key_count, &mut cache);
-    // println!("cache = {:?}", cache);
-    println!("part 1: {}", len);
+    println!("part 1: {}", solve(&mut state, &map, key_count, &mut cache));
+
+    let mut state = VaultState::new(4);
+    let mut cache = HashMap::new();
+    let (x, y) = entrance;
+    for (dx, dy) in &[(0, 0), (0, -1), (1, 0), (0, 1), (-1, 0)] {
+        let (x, y) = (x as i32 + dx, y as i32 + dy);
+        map[y as usize][x as usize] = '#';
+    }
+    for (i, (dx, dy)) in [(1, -1), (1, 1), (-1, 1), (-1, -1)].iter().enumerate() {
+        let (x, y) = (x as i32 + dx, y as i32 + dy);
+        map[y as usize][x as usize] = '@';
+        state.robots[i] = (x as usize, y as usize);
+    }
+    println!("part 2: {}", solve(&mut state, &map, key_count, &mut cache));
 }
