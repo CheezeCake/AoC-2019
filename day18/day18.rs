@@ -126,12 +126,11 @@ fn solve(
             state.keys_found.push(map[key_pos.1][key_pos.0]);
             state.robots[i] = key_pos;
 
-            if let Some(length) = cache.get(state) {
-                min = cmp::min(min, length.checked_add(distance).unwrap_or(std::usize::MAX));
-            } else {
-                let length = solve(state, map, key_count, cache);
-                min = cmp::min(min, length.checked_add(distance).unwrap_or(std::usize::MAX));
-            }
+            let length = match cache.get(state) {
+                Some(&length) => length,
+                _ => solve(state, map, key_count, cache),
+            };
+            min = cmp::min(min, length.checked_add(distance).unwrap_or(std::usize::MAX));
 
             state.keys_found.pop();
             state.robots[i] = pos;
