@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::io;
 use std::ops::Index;
 use std::ops::IndexMut;
@@ -183,11 +182,10 @@ fn main() {
             .sum::<usize>()
     );
 
-    let mut beam = HashSet::new();
-
     const SIZE: i64 = 100;
 
     let mut prev_y = 0;
+
     for x in 0.. {
         let mut y = prev_y;
         while !pulled(x, y, &program) {
@@ -199,37 +197,14 @@ fn main() {
         if y - prev_y > 1000 {
             continue;
         }
-
         prev_y = y;
 
-        // print!("x = {}, y = {} -> ", x, y);
-        let mut h = 0;
-        while pulled(x, y, &program) {
-            beam.insert((x, y));
-            y += 1;
-            h += 1;
-        }
-        // println!("{}, height = {}", y - 1, h);
-
-        if h < SIZE || x < SIZE {
-            continue;
-        }
-
-        let mut ok = true;
-        for y_ in y - h..y - h + SIZE {
-            for x_ in x - SIZE + 1..=x {
-                if !beam.contains(&(x_, y_)) {
-                    ok = false;
-                    break;
-                }
-            }
-            if !ok {
-                break;
-            }
-        }
-        if ok {
-            println!("{}, {}", x - SIZE + 1, y - h);
-            println!("part 2: {}", (x - SIZE + 1) * 10_000 + (y - h));
+        if x >= SIZE
+            && pulled(x - SIZE + 1, y, &program)
+            && pulled(x, y + SIZE - 1, &program)
+            && pulled(x - SIZE + 1, y + SIZE - 1, &program)
+        {
+            println!("part 2: {}", (x - SIZE + 1) * 10_000 + y);
             break;
         }
     }
