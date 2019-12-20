@@ -88,14 +88,20 @@ fn build_portal_map(map: &Vec<Vec<Tile>>) -> HashMap<(usize, usize), (usize, usi
     portal_map
 }
 
+fn adjacent_tiles(
+    x: usize,
+    y: usize,
+    map: &Vec<Vec<Tile>>,
+) -> impl Iterator<Item = (usize, usize)> + '_ {
+    [(0, 1), (0, -1), (-1, 0), (1, 0)]
+        .iter()
+        .map(move |(dx, dy)| (x as i32 + dx, y as i32 + dy))
+        .filter(move |(x, y)| within_bounds(*x, *y, map))
+        .map(|(x, y)| (x as usize, y as usize))
+}
+
 fn find_portal_passage((x, y): (usize, usize), map: &Vec<Vec<Tile>>) -> Option<(usize, usize)> {
-    for (dx, dy) in &[(0, -1), (1, 0), (0, 1), (-1, 0)] {
-        let (sx, sy) = (x as i32 + dx, y as i32 + dy);
-        if within_bounds(sx, sy, map) && map[sy as usize][sx as usize] == Tile::Passage {
-            return Some((sx as usize, sy as usize));
-        }
-    }
-    None
+    adjacent_tiles(x, y, map).find(|(ax, ay)| map[*ay][*ax] == Tile::Passage)
 }
 
 fn outer_portal((x, y): (usize, usize), map: &Vec<Vec<Tile>>) -> bool {
@@ -114,34 +120,35 @@ fn shortest_path(
     q.push_back((start, 0));
     discovered.insert(start);
 
-    while let Some((pos, n)) = q.pop_front() {
-        let (x, y) = pos;
-        for (dx, dy) in &[(0, -1), (1, 0), (0, 1), (-1, 0)] {
-            let (nx, ny) = (x as i32 + dx, y as i32 + dy);
-            if within_bounds(nx, ny, map) && !discovered.contains(&(nx as usize, ny as usize)) {
-                let pos = (nx as usize, ny as usize);
+    while let Some(((x, y), n)) = q.pop_front() {
+        for npos in adjacent_tiles(x, y, map) {
+            if discovered.contains(&npos) {
+                continue;
+            }
 
-                match map[pos.1][pos.0] {
-                    Tile::Passage => {
-                        q.push_back((pos, n + 1));
-                        discovered.insert(pos);
-                    }
-                    Tile::Portal(_) => {
-                        if map[pos.1][pos.0] == target {
-                            return Some(n);
-                        }
-                        if let Some(dst_pos) = portal_map.get(&pos) {
-                            if !discovered.contains(&dst_pos) {
-                                let passage = find_portal_passage(*dst_pos, map)
-                                    .expect("portal passage not found");
-                                discovered.insert(*dst_pos);
-                                discovered.insert(passage);
-                                q.push_back((passage, n + 1));
-                            }
-                        }
-                    }
-                    _ => (),
+            discovered.insert(npos);
+
+            let (nx, ny) = npos;
+            match map[ny][nx] {
+                Tile::Passage => {
+                    q.push_back((npos, n + 1));
+                    discovered.insert(npos);
                 }
+                Tile::Portal(_) => {
+                    if map[ny][nx] == target {
+                        return Some(n);
+                    }
+                    if let Some(dst_pos) = portal_map.get(&npos) {
+                        if !discovered.contains(&dst_pos) {
+                            let passage = find_portal_passage(*dst_pos, map)
+                                .expect("portal passage not found");
+                            discovered.insert(*dst_pos);
+                            discovered.insert(passage);
+                            q.push_back((passage, n + 1));
+                        }
+                    }
+                }
+                _ => (),
             }
         }
     }
@@ -158,64 +165,48 @@ fn shortest_path_recursive(
     let mut q = VecDeque::new();
     let mut discovered = HashMap::new();
 
-    q.push_back((start, 0, 0));
+    q.push_back((start, 0, 0usize));
     discovered.entry(0).or_insert(HashSet::new()).insert(start);
 
-    while let Some((pos, n, level)) = q.pop_front() {
-        let (x, y) = pos;
+    while let Some(((x, y), n, level)) = q.pop_front() {
+        for npos in adjacent_tiles(x, y, map) {
+            if discovered.get(&level).unwrap().contains(&npos) {
+                continue;
+            }
 
-        for (dx, dy) in &[(0, -1), (1, 0), (0, 1), (-1, 0)] {
-            let (nx, ny) = (x as i32 + dx, y as i32 + dy);
+            discovered.get_mut(&level).unwrap().insert(npos);
 
-            if within_bounds(nx, ny, map)
-                && !discovered
-                    .get(&level)
-                    .unwrap()
-                    .contains(&(nx as usize, ny as usize))
-            {
-                let pos = (nx as usize, ny as usize);
-
-                discovered.get_mut(&level).unwrap().insert(pos);
-
-                match map[pos.1][pos.0] {
-                    Tile::Passage => {
-                        q.push_back((pos, n + 1, level));
+            let (nx, ny) = npos;
+            match map[ny][nx] {
+                Tile::Passage => {
+                    q.push_back((npos, n + 1, level));
+                }
+                Tile::Portal(_) => {
+                    if level == 0 && map[ny][nx] == target {
+                        return Some(n);
                     }
-                    Tile::Portal(_) => {
-                        if level == 0 && map[pos.1][pos.0] == target {
-                            return Some(n);
-                        }
-                        if let Some(dst_pos) = portal_map.get(&pos) {
-                            if outer_portal(pos, map) {
-                                if level > 0
-                                    && !discovered
-                                        .entry(level - 1)
-                                        .or_insert(HashSet::new())
-                                        .contains(&dst_pos)
-                                {
-                                    let passage = find_portal_passage(*dst_pos, map)
-                                        .expect("portal passage not found");
-                                    discovered.get_mut(&(level - 1)).unwrap().insert(*dst_pos);
-                                    discovered.get_mut(&(level - 1)).unwrap().insert(passage);
-                                    q.push_back((passage, n + 1, level - 1));
-                                }
-                            } else {
-                                if !discovered
-                                    .entry(level + 1)
-                                    .or_insert(HashSet::new())
-                                    .contains(&dst_pos)
-                                {
-                                    let passage = find_portal_passage(*dst_pos, map)
-                                        .expect("portal passage not found");
-                                    discovered.get_mut(&(level + 1)).unwrap().insert(*dst_pos);
-                                    discovered.get_mut(&(level + 1)).unwrap().insert(passage);
-                                    q.push_back((passage, n + 1, level + 1));
-                                }
+                    if let Some(dst_pos) = portal_map.get(&npos) {
+                        let next_level = if outer_portal(npos, map) {
+                            level.checked_sub(1)
+                        } else {
+                            level.checked_add(1)
+                        };
+                        if let Some(next_level) = next_level {
+                            if !discovered
+                                .entry(next_level)
+                                .or_insert(HashSet::new())
+                                .contains(&dst_pos)
+                            {
+                                let passage = find_portal_passage(*dst_pos, map)
+                                    .expect("portal passage not found");
+                                discovered.get_mut(&next_level).unwrap().insert(*dst_pos);
+                                discovered.get_mut(&next_level).unwrap().insert(passage);
+                                q.push_back((passage, n + 1, next_level));
                             }
                         }
                     }
-                    _ => (),
                 }
+                _ => (),
             }
         }
     }
