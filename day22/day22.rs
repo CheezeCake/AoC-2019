@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 enum Technique {
     DealIntoNewStack,
-    DealWithIncrement(usize),
+    DealWithIncrement(isize),
     Cut(isize),
 }
 
@@ -30,45 +30,13 @@ fn main() {
         .map(|line| line.unwrap().parse().expect("error parsing input"))
         .collect();
 
-    const DECK_SIZE: usize = 10007;
-    let mut deck: Vec<usize> = (0..DECK_SIZE).collect();
-
-    for t in &instructions {
-        assert_eq!(deck.len(), DECK_SIZE);
-        match t {
-            Technique::DealIntoNewStack => deck.reverse(),
-            Technique::DealWithIncrement(n) => {
-                let mut tmp = deck.clone();
-                let mut write_idx = 0;
-                for &c in &deck {
-                    tmp[write_idx % deck.len()] = c;
-                    write_idx += n;
-                }
-                deck = tmp;
-            }
-            Technique::Cut(n) => {
-                if *n > 0 {
-                    let n = *n as usize;
-                    let mut tmp = deck[n..].to_vec();
-                    tmp.append(&mut deck[0..n].to_vec());
-                    deck = tmp;
-                } else {
-                    let n = n.abs() as usize;
-                    let i = deck.len() - n;
-                    let mut tmp = deck[i..].to_vec();
-                    tmp.append(&mut deck[0..i].to_vec());
-                    deck = tmp;
-                }
-            }
-        }
-    }
-
+    const DECK_SIZE: isize = 10007;
     println!(
         "part 1: {}",
-        deck.iter()
-            .enumerate()
-            .find(|(_, &c)| c == 2019)
-            .expect("card 2019 not found")
-            .0
+        instructions.iter().fold(2019, |i, t| match t {
+            Technique::DealIntoNewStack => DECK_SIZE - i - 1,
+            Technique::DealWithIncrement(n) => (i * n) % DECK_SIZE,
+            Technique::Cut(n) => (i - n) % DECK_SIZE,
+        })
     );
 }
