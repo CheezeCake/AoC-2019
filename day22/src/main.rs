@@ -1,3 +1,4 @@
+use mod_exp::mod_exp;
 use std::io;
 use std::io::prelude::*;
 use std::num::ParseIntError;
@@ -23,6 +24,29 @@ impl FromStr for Technique {
     }
 }
 
+fn part2(instructions: &[Technique]) -> i128 {
+    const DECK_SIZE: i128 = 119315717514047;
+    const REPEATS: i128 = 101741582076661;
+
+    let (a, b) = instructions.iter().rev().fold((1, 0), |(a, b), t| {
+        let (a_next, b_next) = match t {
+            Technique::DealIntoNewStack => (-a, DECK_SIZE - b - 1),
+            Technique::DealWithIncrement(n) => {
+                let n = mod_exp(*n as i128, DECK_SIZE - 2, DECK_SIZE);
+                (a * n, b * n)
+            }
+            Technique::Cut(n) => (a, b + *n as i128 + DECK_SIZE),
+        };
+        (a_next % DECK_SIZE, b_next % DECK_SIZE)
+    });
+
+    let x = 2020 * mod_exp(a, REPEATS, DECK_SIZE) % DECK_SIZE;
+    let tmp =
+        (mod_exp(a, REPEATS, DECK_SIZE) - 1) * mod_exp(a - 1, DECK_SIZE - 2, DECK_SIZE) % DECK_SIZE;
+    let y = b * tmp % DECK_SIZE;
+    (x + y) % DECK_SIZE
+}
+
 fn main() {
     let instructions: Vec<Technique> = io::stdin()
         .lock()
@@ -39,4 +63,6 @@ fn main() {
             Technique::Cut(n) => (i - n) % DECK_SIZE,
         })
     );
+
+    println!("part 2: {}", part2(&instructions));
 }
